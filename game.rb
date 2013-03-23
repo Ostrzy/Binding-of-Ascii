@@ -129,10 +129,11 @@ class BindingGame
   class ChasingEnemy < Struct.new(:x, :y)
     include Coordinates
 
-    attr_accessor :tick, :last_shot
+    attr_accessor :tick, :speed
 
     def initialize(x, y)
       self.tick = 0
+      self.speed = rand(8) + 5
       super(x, y)
     end
 
@@ -266,7 +267,7 @@ class BindingGame
   def move_chasers
     @chasing.each do |chaser|
       chaser.tick_me
-      if chaser.tick%5 == 0
+      if chaser.tick%chaser.speed == 0
         vec = [(@ascii.x - chaser.x).sign, (@ascii.y - chaser.y).sign]
         vec[0] *= 2
         chaser.move(vec.x, vec.y)
