@@ -13,6 +13,18 @@ class Array
   end
 end
 
+class Fixnum
+  def sign
+    if self > 0
+      1
+    elsif self < 0
+      -1
+    else
+      0
+    end
+  end
+end
+
 class BindingGame
   MOVE = {
     :up => [0, -1],
@@ -105,8 +117,35 @@ class BindingGame
       '&'
     end
 
+    def color
+      Curses::COLOR_YELLOW
+    end
+
     def shoot
       self.last_shot = rand(10)
+    end
+  end
+
+  class ChasingEnemy < Struct.new(:x, :y)
+    include Coordinates
+
+    attr_accessor :tick, :last_shot
+
+    def initialize(x, y)
+      self.tick = 0
+      super(x, y)
+    end
+
+    def char
+      "h"
+    end
+
+    def tick_me
+      self.tick += 1
+    end
+
+    def color
+      Curses::COLOR_MAGENTA
     end
   end
 
@@ -116,9 +155,11 @@ class BindingGame
     @height   = height
     @ascii    = Ascii.new(4, 4)
     @tick     = 0
+    @killed   = 0
     @walls    = []
     @cwalls   = []
     @enemies  = []
+    @chasing  = []
     initialize_walls
   end
 
@@ -153,12 +194,12 @@ class BindingGame
       @walls << Wall.new(30+i,14)
     end
 
-    20.times do |i|
+    7.times do |i|
       @walls << Wall.new(26,10+i)
     end
 
-    20.times do |i|
-      @walls << Wall.new(52,i+i)
+    10.times do |i|
+      @walls << Wall.new(56,3+i)
     end
   end
 
@@ -177,21 +218,40 @@ class BindingGame
   end
 
   def check_enemies_collisions
+    initial = @enemies.count + @chasing.count
     @bullets.delete_if do |bullet|
       !!@enemies.reject!{ |enemy| enemy.coordinates == bullet.coordinates && bullet.player? }
     end
+    @bullets.delete_if do |bullet|
+      !!@chasing.reject!{ |enemy| enemy.coordinates == bullet.coordinates && bullet.player? }
+    end
+    @killed += initial - @enemies.count - @chasing.count
   end
 
   def check_player_collisions
     @bullets.each do |bullet|
       if @ascii.coordinates == bullet.coordinates
-        @status = "You are dead! You lasted #{(@tick * sleep_time).round(2)} seconds"
+        @status = "You are dead! You lasted #{(@tick * sleep_time).round(2)} seconds and killed #{@killed} enemies."
+        exit
+      end
+    end
+  end
+
+  def check_chasing_collisions
+    (@chasing + @enemies).each do |enemy|
+      if enemy.coordinates == @ascii.coordinates
+        @status = "You are dead! You lasted #{(@tick * sleep_time).round(2)} seconds and killed #{@killed} enemies."
         exit
       end
     end
   end
 
   def move_enemies
+    move_shooters
+    move_chasers
+  end
+
+  def move_shooters
     @enemies.each do |enemy|
       try_to_shoot(enemy)
       enemy.tick_me
@@ -200,6 +260,17 @@ class BindingGame
         enemy.move(vec.x, vec.y) unless @cwalls.include? enemy.desired_coordinates(vec.x, vec.y)
       end
       try_to_shoot(enemy)
+    end
+  end
+
+  def move_chasers
+    @chasing.each do |chaser|
+      chaser.tick_me
+      if chaser.tick%5 == 0
+        vec = [(@ascii.x - chaser.x).sign, (@ascii.y - chaser.y).sign]
+        vec[0] *= 2
+        chaser.move(vec.x, vec.y) unless @cwalls.include? chaser.desired_coordinates(vec.x, vec.y)
+      end
     end
   end
 
@@ -217,7 +288,14 @@ class BindingGame
 
   def spawn_new_enemies
     if @tick%30 == 0
-      @enemies << Enemy.new(rand((@width-2)/2+1)*2, rand(@height-3)+1)
+      how_many = @tick/30
+      chasers = rand(how_many+1)
+      (how_many - chasers).times do
+        @enemies << Enemy.new(rand((@width-2)/2+1)*2, rand(@height-3)+1)
+      end
+      chasers.times do
+        @chasing << ChasingEnemy.new(rand((@width-2)/2+1)*2, rand(@height-3)+1)
+      end
     end
   end
 
@@ -226,6 +304,7 @@ class BindingGame
     move_bullets
     check_bullet_collisions
     move_enemies
+    check_chasing_collisions
     spawn_new_enemies
     @tick += 1
   end
@@ -240,7 +319,7 @@ class BindingGame
   end
 
   def objects
-    [@ascii] + @walls + @bullets + @enemies
+    [@ascii] + @walls + @bullets + @chasing + @enemies
   end
 
   def input_map
