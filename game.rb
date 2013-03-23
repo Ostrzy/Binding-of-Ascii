@@ -269,7 +269,7 @@ class BindingGame
       if chaser.tick%5 == 0
         vec = [(@ascii.x - chaser.x).sign, (@ascii.y - chaser.y).sign]
         vec[0] *= 2
-        chaser.move(vec.x, vec.y) unless @cwalls.include? chaser.desired_coordinates(vec.x, vec.y)
+        chaser.move(vec.x, vec.y)
       end
     end
   end
