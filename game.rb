@@ -154,7 +154,7 @@ class BindingGame
     @bullets  = []
     @width    = width
     @height   = height
-    @ascii    = Ascii.new(4, 4)
+    @ascii    = Ascii.new(rand((@width-2)/2+1)*2, rand(@height-3)+1)
     @tick     = 0
     @killed   = 0
     @walls    = []
@@ -232,7 +232,8 @@ class BindingGame
   def check_player_collisions
     @bullets.each do |bullet|
       if @ascii.coordinates == bullet.coordinates
-        @status = "You are dead! You lasted #{(@tick * sleep_time).round(2)} seconds and killed #{@killed} enemies."
+        time = (@tick * sleep_time).round(2)
+        @status = "You lasted #{time} seconds and killed #{@killed} enemies. Your score: #{score}"
         exit
       end
     end
@@ -241,10 +242,15 @@ class BindingGame
   def check_chasing_collisions
     (@chasing + @enemies).each do |enemy|
       if enemy.coordinates == @ascii.coordinates
-        @status = "You are dead! You lasted #{(@tick * sleep_time).round(2)} seconds and killed #{@killed} enemies."
+        time = (@tick * sleep_time).round(2)
+        @status = "You lasted #{time} seconds and killed #{@killed} enemies. Your score: #{score}"
         exit
       end
     end
+  end
+
+  def score
+    ((@tick * sleep_time).round(2) * 100 + @killed * 200).to_i
   end
 
   def move_enemies
@@ -320,7 +326,7 @@ class BindingGame
   end
 
   def objects
-    [@ascii] + @walls + @bullets + @chasing + @enemies
+     @walls + @bullets + @enemies + @chasing + [@ascii]
   end
 
   def input_map
