@@ -118,7 +118,7 @@ class BindingGame
     @tick     = 0
     @walls    = []
     @cwalls   = []
-    @enemies  = [Enemy.new(14,14), Enemy.new(16,16)]
+    @enemies  = []
     initialize_walls
   end
 
@@ -262,7 +262,7 @@ class BindingGame
   end
 
   def textbox_content
-    "Awesome game!"
+    "w, s, a, d for move. h, j, k ,l for shoot. Fight if you can!"
   end
 
   def wait?
